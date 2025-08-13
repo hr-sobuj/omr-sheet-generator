@@ -1,0 +1,17 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/*.py",
+      "use": "@vercel/python"
+    },
+    {
+      "src": "frontend/*.html",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    { "src": "/generate-omr", "dest": "/api/omr.py" },
+    { "src": "/(.*)", "dest": "/frontend/index.html" }
+  ]
+}
