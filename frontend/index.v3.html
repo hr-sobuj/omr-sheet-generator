@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="bn">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>OMR Sheet Generator — Pagination Version</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.2/html2pdf.bundle.min.js"></script>
+  <style>
+    body { font-family: 'Inter', 'Roboto', 'Noto Sans Bengali', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; }
+    .bubble { width: 24px; height: 24px; border-radius: 9999px; border: 2px solid #cbd5e1; display:inline-flex; align-items:center; justify-content:center; font-size:12px; font-weight:600; margin-right:6px; box-sizing:border-box; vertical-align:middle; background: transparent; }
+    .bubble-label { font-size:12px; margin-left:6px; color:#475569 }
+    .a4 { width: 210mm; min-height: 297mm; padding: 18mm; background: white; box-sizing: border-box; page-break-after: always; }
+    @media print { .no-print { display:none } }
+  </style>
+</head>
+<body class="bg-slate-100 p-8">
+  <div class="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div class="md:col-span-1 bg-white p-6 rounded-2xl shadow">
+      <h2 class="text-xl font-semibold mb-4">OMR সেটিংস</h2>
+
+      <label class="block text-sm text-slate-600 mb-1">প্রতিষ্ঠানের নাম</label>
+      <input id="institute" type="text" placeholder="উদাহরণ: ABC Institute" class="w-full border rounded p-2 mb-3" />
+
+      <label class="block text-sm text-slate-600 mb-1">মোট প্রশ্ন</label>
+      <input id="questions" type="number" min="1" max="500" value="200" class="w-full border rounded p-2 mb-3" />
+
+      <label class="block text-sm text-slate-600 mb-1">প্রশ্ন প্রতি অপশন</label>
+      <input id="options" type="number" min="2" max="6" value="4" class="w-full border rounded p-2 mb-3" />
+
+      <label class="block text-sm text-slate-600 mb-1">অপশন ভাষা</label>
+      <select id="optionLang" class="w-full border rounded p-2 mb-3">
+        <option value="eng">English (A, B, C)</option>
+        <option value="bn">বাংলা (ক, খ, গ)</option>
+      </select>
+
+      <label class="block text-sm text-slate-600 mb-1">লেটার বুদ্বুদ ভিতরে দেখাবেন?</label>
+      <div class="flex items-center gap-2 mb-3">
+        <input id="insideBubble" type="checkbox" class="h-4 w-4" checked />
+        <label for="insideBubble" class="text-sm text-slate-600">হ্যাঁ — অক্ষরগুলো বুদ্বুদে দেখাব (space বাঁচে)</label>
+      </div>
+
+      <label class="block text-sm text-slate-600 mb-1">বুদ্বুদ (border) রং</label>
+      <input id="bubbleColor" type="color" value="#cbd5e1" class="w-full h-10 p-1 mb-3" />
+
+      <label class="block text-sm text-slate-600 mb-1">শীট ধরন</label>
+      <select id="layout" class="w-full border rounded p-2 mb-3">
+        <option value="single">Single column (compact)</option>
+        <option value="two">Two columns (space-saving)</option>
+        <option value="grid">Grid (best for printing)</option>
+      </select>
+
+      <label class="block text-sm text-slate-600 mb-1">Questions per page (0 = auto)</label>
+      <input id="perPageManual" type="number" min="0" max="500" value="0" class="w-full border rounded p-2 mb-3" />
+
+      <label class="block text-sm text-slate-600 mb-1">লোগো (ঐচ্ছিক)</label>
+      <input id="logo" type="file" accept="image/*" class="w-full mb-3" />
+
+      <div class="flex gap-2">
+        <button id="previewBtn" class="flex-1 bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">
+          <span class="material-icons align-middle">visibility</span> প্রিভিউ</button>
+        <button id="downloadBtn" class="flex-1 bg-emerald-600 text-white px-4 py-2 rounded hover:bg-emerald-700">
+          <span class="material-icons align-middle">download</span> PDF ডাউনলোড</button>
+      </div>
+
+      <p class="text-xs text-slate-500 mt-3">নোট: ২০০ প্রশ্ন এক পেজে 'ক্যাম্প্যাক্ট' মোডেও সাধারণত পড়া/স্ক্যানার সমস্যা দেয়। Auto per-page এ কোড চেষ্টা করবে যুক্তিযুক্তভাবে পেজ ভাগ করতে।</p>
+    </div>
+
+    <div class="md:col-span-2 bg-white p-6 rounded-2xl shadow">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold">OMR প্রিভিউ</h2>
+        <div class="text-sm text-slate-500">ডাউনলোডের আগে দেখে নিন</div>
+      </div>
+
+      <div id="previewArea" class="border rounded p-4 bg-slate-50 min-h-[420px]">
+        <div class="text-slate-400">প্রিভিউ দেখতে "প্রিভিউ" বাটনে ক্লিক করুন।</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const previewBtn = document.getElementById('previewBtn');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const previewArea = document.getElementById('previewArea');
+
+    function clearPreview() { previewArea.innerHTML = ''; }
+
+    function makeBubble(letter, inside, borderColor){
+      const span = document.createElement('span');
+      span.className = 'bubble';
+      span.setAttribute('role','radio');
+      span.setAttribute('aria-label', letter);
+      span.style.borderColor = borderColor || '#cbd5e1';
+      if (inside) span.textContent = letter;
+      return span;
+    }
+
+    function optionLetter(index, lang){
+      if (lang === 'bn') return String.fromCharCode(0x0995 + index);
+      return String.fromCharCode(65 + index);
+    }
+
+    // Auto capacity estimator (simple heuristic)
+    function estimatePerPage(layout, opts, inside){
+      // base capacities (practical default)
+      let base = 36; // single
+      if (layout === 'two') base = 72;
+      if (layout === 'grid') base = 100;
+      // more options use more horizontal space -> reduce capacity
+      const optsFactor = 4 / Math.max(2, opts); // if opts>4 capacity lowers
+      const insideFactor = inside ? 1.12 : 0.95; // inside bubbles slightly more compact
+      const cap = Math.floor(base * optsFactor * insideFactor);
+      return Math.max(8, cap); // lower bound
+    }
+
+    // paginate into array of pageSizes (numbers of questions per page)
+    function paginate(total, perPageManual, layout, opts, inside){
+      if (perPageManual && perPageManual > 0) {
+        const pages = [];
+        let rem = total;
+        while (rem > 0) {
+          pages.push(Math.min(perPageManual, rem));
+          rem -= perPageManual;
+        }
+        return pages;
+      }
+      const per = estimatePerPage(layout, opts, inside);
+      const pages = [];
+      let rem = total;
+      while (rem > 0) {
+        pages.push(Math.min(per, rem));
+        rem -= per;
+      }
+      return pages;
+    }
+
+    function renderPageBlock({inst, questionsSliceStart, questionsCount, opts, layout, logoData, lang, inside, borderColor}){
+      const container = document.createElement('div');
+      container.className = 'a4';
+      // header
+      const header = document.createElement('div');
+      header.className = 'flex items-center justify-between mb-6';
+      const left = document.createElement('div');
+      left.innerHTML = `<div style="font-size:18px;font-weight:700">${inst || '—'}</div><div style="font-size:12px;color:#64748b">OMR Answer Sheet</div>`;
+      header.appendChild(left);
+      if (logoData) {
+        const img = document.createElement('img');
+        img.src = logoData; img.style.maxHeight='48px'; img.style.objectFit='contain';
+        header.appendChild(img);
+      }
+      container.appendChild(header);
+
+      const questionsWrap = document.createElement('div');
+      questionsWrap.className = 'w-full';
+
+      // helper to render a question row
+      function makeRow(i){
+        const row = document.createElement('div');
+        row.className = 'flex items-center mb-1';
+        row.style.flexWrap = 'wrap';
+        const num = document.createElement('div');
+        num.style.width = '34px'; num.style.fontWeight = '600';
+        num.textContent = i + '.';
+        row.appendChild(num);
+        for (let j=0;j<opts;j++){
+          const letter = optionLetter(j, lang);
+          const bubble = makeBubble(letter, inside, borderColor);
+          row.appendChild(bubble);
+          if (!inside){
+            const lbl = document.createElement('span');
+            lbl.className = 'bubble-label'; lbl.textContent = letter;
+            row.appendChild(lbl);
+          }
+        }
+        return row;
+      }
+
+      if (layout === 'grid') {
+        const grid = document.createElement('div');
+        grid.className = 'grid grid-cols-2 gap-6';
+        const col1 = document.createElement('div');
+        const col2 = document.createElement('div');
+        for (let k=0; k<questionsCount; k++){
+          const i = questionsSliceStart + k;
+          const row = makeRow(i);
+          if ((k) < Math.ceil(questionsCount/2)) col1.appendChild(row);
+          else col2.appendChild(row);
+        }
+        grid.appendChild(col1); grid.appendChild(col2); questionsWrap.appendChild(grid);
+      } else if (layout === 'two') {
+        const grid = document.createElement('div');
+        grid.className = 'grid grid-cols-2 gap-4';
+        const leftCol = document.createElement('div'); const rightCol = document.createElement('div');
+        const perCol = Math.ceil(questionsCount/2);
+        for (let k=0; k<questionsCount; k++){
+          const i = questionsSliceStart + k;
+          const row = makeRow(i);
+          if (k < perCol) leftCol.appendChild(row); else rightCol.appendChild(row);
+        }
+        grid.appendChild(leftCol); grid.appendChild(rightCol); questionsWrap.appendChild(grid);
+      } else {
+        for (let k=0; k<questionsCount; k++){
+          const i = questionsSliceStart + k;
+          questionsWrap.appendChild(makeRow(i));
+        }
+      }
+
+      container.appendChild(questionsWrap);
+      const footer = document.createElement('div');
+      footer.className = 'mt-6 text-sm text-slate-600';
+      const today = new Date().toLocaleDateString();
+      footer.textContent = `Generated: ${today}`;
+      container.appendChild(footer);
+
+      return container;
+    }
+
+    async function getLogoData(fileInput){
+      const f = fileInput.files && fileInput.files[0];
+      if (!f) return null;
+      return new Promise((res, rej)=>{
+        const r = new FileReader();
+        r.onload = e => res(e.target.result);
+        r.onerror = () => res(null);
+        r.readAsDataURL(f);
+      });
+    }
+
+    previewBtn.addEventListener('click', async ()=>{
+      const inst = document.getElementById('institute').value.trim();
+      const total = parseInt(document.getElementById('questions').value) || 0;
+      const opts = parseInt(document.getElementById('options').value) || 0;
+      const layout = document.getElementById('layout').value;
+      const logoData = await getLogoData(document.getElementById('logo'));
+      const lang = document.getElementById('optionLang').value === 'bn' ? 'bn' : 'eng';
+      const inside = document.getElementById('insideBubble').checked;
+      const borderColor = document.getElementById('bubbleColor').value || '#cbd5e1';
+      const perPageManual = parseInt(document.getElementById('perPageManual').value) || 0;
+
+      if (total <= 0 || opts < 2) {
+        alert('অনুগ্রহ করে সঠিক সংখ্যা দিন: মোট প্রশ্ন > 0 এবং প্রতিটি প্রশ্নে অপশন >= 2');
+        return;
+      }
+
+      clearPreview();
+
+      const pages = paginate(total, perPageManual, layout, opts, inside);
+      // pages = [n1, n2, ...] number of questions per page
+      let cursor = 1;
+      pages.forEach(cnt=>{
+        const block = renderPageBlock({
+          inst,
+          questionsSliceStart: cursor,
+          questionsCount: cnt,
+          opts, layout, logoData, lang, inside, borderColor
+        });
+        previewArea.appendChild(block);
+        cursor += cnt;
+      });
+
+      previewArea.scrollIntoView({behavior:'smooth'});
+    });
+
+    downloadBtn.addEventListener('click', async ()=>{
+      if (!previewArea.firstChild || previewArea.querySelector('.a4')===null){
+        previewBtn.click();
+        await new Promise(r=>setTimeout(r,400));
+      }
+      const pages = previewArea.querySelectorAll('.a4');
+      if (!pages.length) { alert('প্রিভিউ তৈরিতে সমস্যা হয়েছে'); return; }
+
+      // clone all pages into wrapper then export
+      const wrapper = document.createElement('div');
+      wrapper.style.background = '#ffffff';
+      pages.forEach(p=>{
+        const c = p.cloneNode(true);
+        // ensure page-break-after for safety
+        c.style.pageBreakAfter = 'always';
+        wrapper.appendChild(c);
+      });
+      document.body.appendChild(wrapper);
+
+      const inst = document.getElementById('institute').value.trim() || 'OMR';
+      const date = new Date();
+      const fname = `${inst.replace(/[^a-z0-9\-\_]/gi,'_')}_${date.toISOString().slice(0,10)}.pdf`;
+
+      const opt = {
+        margin:       10,
+        filename:     fname,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2 },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+
+      await html2pdf().set(opt).from(wrapper).save().catch(err=>{ console.error(err); alert('PDF তৈরিতে সমস্যা: '+err.message); });
+      document.body.removeChild(wrapper);
+    });
+  </script>
+</body>
+</html>
