@@ -11,7 +11,7 @@
     }
   ],
   "routes": [
-    { "src": "/generate-omr", "dest": "/api/omr.py" },
+    { "src": "/generate-omr", "dest": "api/generate_omr.py" },
     { "src": "/(.*)", "dest": "/frontend/index.html" }
   ]
 }
